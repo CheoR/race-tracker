@@ -18,6 +18,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.racetracker.R
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun RaceTrackerApp() {
@@ -47,6 +50,37 @@ fun RaceTrackerApp() {
         RaceParticipant(name = "Player 2", progressIncrement = 2)
     }
     var raceInProgress by remember { mutableStateOf(false) }
+
+    /**
+     * To ensure that if the instances of playerOne or playerTwo are replaced with different
+     * instances, then LaunchedEffect() needs to cancel and relaunch the underlying coroutines,
+     * add the playerOne and playerTwo objects as key to the LaunchedEffect. Similar to how a
+     * Text() composable gets recomposed when its text value changes, if any of the key arguments
+     * of the LaunchedEffect() changes, the underlying coroutine is canceled and relaunched.
+     *
+     * The value for the raceInProgress state is updated to true when the user clicks the Start
+     * button and the LaunchedEffect() executes.
+     *
+     * launch two separate coroutines to run both participants concurrently and move each call to
+     * the run() function inside those coroutines.
+     */
+    if (raceInProgress) {
+        LaunchedEffect(playerOne, playerTwo) {
+            coroutineScope {
+                // Not putting launches inside coroutineScope will update the state immediately,
+                // without waiting for players to finish run() execution.
+                launch { playerOne.run() }
+                launch { playerTwo.run() }
+            }
+            /**
+             * Update the raceInProgress flag to false to finish the race. This value is set to
+             * false when the user clicks on Pause too. When this value is set to false the
+             * LaunchedEffect() ensures that all the launched coroutines are canceled.
+             */
+            raceInProgress = false
+        }
+    }
+
 
     RaceTrackerScreen(
         playerOne = playerOne,
